@@ -21,6 +21,9 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
+import android.os.Bundle;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -31,14 +34,40 @@ import com.example.android.mygarden.ui.PlantDetailActivity;
 
 public class PlantWidgetProvider extends AppWidgetProvider {
 
+    // Multiple view min width in dps
+    private static final int MULTIPLE_VIEW_MIN_WIDTH = 300;
+
     // setImageViewResource to update the widget’s image
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager,
                                 int imgRes, long plantId, boolean showWater, int appWidgetId) {
 
-        // TODO (4): separate the updateAppWidget logic into getGardenGridRemoteView and getSinglePlantRemoteView
-        // TODO (5): Use getAppWidgetOptions to get widget width and use the appropriate RemoteView method
+        // DONE (4): separate the updateAppWidget logic into getGardenGridRemoteView and getSinglePlantRemoteView
+        // DONE (5): Use getAppWidgetOptions to get widget width and use the appropriate RemoteView method
         // TODO (6): Set the PendingIntent template in getGardenGridRemoteView to launch PlantDetailActivity
-        
+
+        RemoteViews views = null;
+
+        int width = 0;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+            Bundle options = options = appWidgetManager.getAppWidgetOptions(appWidgetId);
+            width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH);
+        }
+
+         if (width < MULTIPLE_VIEW_MIN_WIDTH) {
+            views = getSinglePlantRemoteView(context, imgRes, plantId, showWater);
+        } else {
+            views = getGardenGridRemoteView(context);
+        }
+
+        appWidgetManager.updateAppWidget(appWidgetId, views);
+    }
+
+    private static RemoteViews getGardenGridRemoteView(Context context) {
+        return null;
+    }
+
+    private static RemoteViews getSinglePlantRemoteView(Context context, int imgRes, long plantId,
+                                                        boolean showWater) {
         Intent intent;
         if (plantId == PlantContract.INVALID_PLANT_ID) {
             intent = new Intent(context, MainActivity.class);
@@ -66,7 +95,7 @@ public class PlantWidgetProvider extends AppWidgetProvider {
         PendingIntent wateringPendingIntent = PendingIntent.getService(context, 0, wateringIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         views.setOnClickPendingIntent(R.id.widget_water_button, wateringPendingIntent);
         // Instruct the widget manager to update the widget
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+        return views;
     }
 
     @Override
@@ -97,4 +126,24 @@ public class PlantWidgetProvider extends AppWidgetProvider {
         // Perform any action when the last AppWidget instance for this provider is deleted
     }
 
+    /**
+     * Called in response to the {@link AppWidgetManager#ACTION_APPWIDGET_OPTIONS_CHANGED}
+     * broadcast when this widget has been layed out at a new size.
+     * <p>
+     * {@more}
+     *
+     * @param context          The {@link Context Context} in which this receiver is
+     *                         running.
+     * @param appWidgetManager A {@link AppWidgetManager} object you can call {@link
+     *                         AppWidgetManager#updateAppWidget} on.
+     * @param appWidgetId      The appWidgetId of the widget whose size changed.
+     * @param newOptions       The appWidgetId of the widget whose size changed.
+     * @see AppWidgetManager#ACTION_APPWIDGET_OPTIONS_CHANGED
+     */
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
+                                          int appWidgetId, Bundle newOptions) {
+        PlantWateringService.startActionUpdatePlantWidgets(context);
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
+    }
 }
